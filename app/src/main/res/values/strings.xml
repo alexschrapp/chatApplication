@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">ChatApplicationAssignment</string>
+    <string name="editText_message_value">Enter message here</string>
+</resources>
