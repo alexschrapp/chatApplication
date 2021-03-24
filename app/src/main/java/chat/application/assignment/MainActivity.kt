@@ -3,12 +3,19 @@ package chat.application.assignment
 import android.content.Context
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.text.InputType
 import android.util.Log
 import android.view.KeyEvent
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -17,8 +24,11 @@ import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 
 class MainActivity : AppCompatActivity() {
+    private val TAG: String = MainActivity::class.java.name
     private lateinit var messages: ArrayList<String>
     private lateinit var database: DatabaseReference
+    private lateinit var auth: FirebaseAuth
+    private var currentUser: FirebaseUser? = null
     private lateinit var edMessage: EditText
     private lateinit var rcMessageList: RecyclerView
 
@@ -30,6 +40,8 @@ class MainActivity : AppCompatActivity() {
         rcMessageList = findViewById(R.id.messageList)
 
         database = Firebase.database.reference
+        auth = Firebase.auth
+
         messages = arrayListOf()
 
         edMessage.setOnKeyListener { v, keyCode, event ->
@@ -40,6 +52,8 @@ class MainActivity : AppCompatActivity() {
             return@setOnKeyListener false
 
         }
+
+
         val messageListener = object: ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.value != null){
@@ -76,5 +90,58 @@ class MainActivity : AppCompatActivity() {
                 imm.hideSoftInputFromWindow(view.windowToken, 0)
             }
         }
+
+    override fun onStart() {
+        super.onStart()
+
+        loginDialog()
+    }
+
+    fun loginDialog(){
+        val builder = AlertDialog.Builder(this)
+
+        with(builder) {
+            setTitle("Log in")
+            val linearLayout: LinearLayout = LinearLayout(this@MainActivity)
+            linearLayout.orientation = LinearLayout.VERTICAL
+
+            val inputEmail: EditText = EditText(this@MainActivity)
+            inputEmail.inputType =
+                    InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+            inputEmail.hint = "Enter email"
+            linearLayout.addView(inputEmail)
+
+            val inputPw: EditText = EditText(this@MainActivity)
+            inputPw.inputType =
+                    InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            inputPw.hint = "Enter password"
+            linearLayout.addView(inputPw)
+            builder.setView(linearLayout)
+
+            builder.setPositiveButton("OK"){dialog, which ->
+                login(inputEmail.text.toString(), inputPw.text.toString())
+            } .show()
+
+
+        }
+
+
+    }
+
+    fun login(email: String, password: String){
+        auth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this){task->
+                    if (task.isSuccessful){
+                        Log.d(TAG,"signInWithEmail:success")
+                        Toast.makeText(baseContext, "Authentification successful",
+                            Toast.LENGTH_SHORT).show()
+                        currentUser= auth.currentUser
+                    }else{
+                        Log.w(TAG, "signInWithEmail:failure" , task.exception)
+                        Toast.makeText(baseContext, "Authentification failed.",
+                            Toast.LENGTH_SHORT).show()
+                    }
+                }
+    }
 
     }
